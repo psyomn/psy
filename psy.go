@@ -67,7 +67,7 @@ func main() {
 
 	cmd := args[1]
 	rest := args[2:]
-	var callfn func(common.RunParams) common.RunReturn = nil
+	var callfn func(common.RunParams) common.RunReturn
 
 	for _, c := range commands {
 		if cmd == c.name {

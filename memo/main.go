@@ -1,5 +1,5 @@
 /*
-Package psymemo is the tool for storing labels, in a shitty way, on
+Package memo is the tool for storing labels, in a shitty way, on
 files in filesystems.
 
 I am a chronir user of ~/.local/bin, and sometimes I want to remember
@@ -134,6 +134,8 @@ func store(memos *memoStore) {
 	}
 }
 
+// Run the memo command
+// TODO: this needs some cleaning up and a better argument parsing strategy
 func Run(args common.RunParams) common.RunReturn {
 	if len(args) < 1 {
 		theStore := decode(memoDataFilePath())
@@ -146,7 +148,7 @@ func Run(args common.RunParams) common.RunReturn {
 	name := args[0]
 
 	if _, err := os.Stat(name); os.IsNotExist(err) {
-		return errors.New("fool! you can't memo what does not exist!")
+		return errors.New("fool! you can't memo what does not exist")
 	}
 
 	absPath, err := filepath.Abs(name)

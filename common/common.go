@@ -24,7 +24,10 @@ import (
 	"path"
 )
 
+// RunParams is the type signature that all run commands should respect
 type RunParams = []string
+
+// RunReturn is the return type that all run commands should respect
 type RunReturn = error
 
 // ConfigDir prefers $HOME/.config, regardles of XDG stuff (for now)
