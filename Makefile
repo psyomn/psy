@@ -1,7 +1,7 @@
 # Taken from github.com/RAttab/gonfork
 all: build verify test
 verify: vet lint
-test: test-cover test-race test-unused test-bench
+test: test-cover test-race test-bench
 .PHONY: all verify test
 
 fmt:
