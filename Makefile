@@ -1,5 +1,5 @@
 # Taken from github.com/RAttab/gonfork
-all: build verify test
+all: build verify test special
 verify: vet lint
 test: test-cover test-race test-bench
 .PHONY: all verify test
@@ -47,5 +47,9 @@ test-bench:
 	@echo -- run benchmarks
 	go test -v -bench=.
 .PHONY: test-bench
+
+special:
+	@GOOS=windows go build -o ./windows/uploader.exe ./uploader/uploader/main.go
+.PHONY: special
 
 .PHONY:test-all
