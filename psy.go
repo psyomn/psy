@@ -24,6 +24,8 @@ import (
 	"os"
 
 	"github.com/psyomn/psy/common"
+
+	"github.com/psyomn/psy/book"
 	"github.com/psyomn/psy/memo"
 	"github.com/psyomn/psy/uploader"
 )
@@ -40,6 +42,7 @@ func init() {
 	commands = []command{
 		{"memo", memo.Run, "description on files in the system"},
 		{"upld", uploader.Run, "run the uploader tool"},
+		{"book", book.Run, "list goodreads book"},
 		{"help", help, "print help"},
 	}
 }
