@@ -47,6 +47,8 @@ const (
 // Run will run the command with default configs. For now, the
 // uploader does not accept any configuration.
 func Run(args common.RunParams) common.RunReturn {
+	createDirs()
+
 	fmt.Println("listening at port:", port)
 
 	ips, _ := common.GetLocalIP()
@@ -61,7 +63,7 @@ func Run(args common.RunParams) common.RunReturn {
 	return nil
 }
 
-func init() {
+func createDirs() {
 	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
 		err := os.MkdirAll(uploadsDir, 0755)
 		if err != nil {
