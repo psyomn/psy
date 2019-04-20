@@ -1,6 +1,5 @@
 /*
-Package common contains things that should be exported anywhere within
-psy.
+Package barf contains code relevant to barfing.
 
 Copyright 2019 Simon Symeonidis (psyomn)
 
@@ -16,26 +15,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package common
+package barf
 
 import (
-	"os"
-	"path"
+	"fmt"
+
+	"github.com/psyomn/psy/common"
 )
 
-// RunParams is the type signature that all run commands should respect
-type RunParams = []string
-
-// RunReturn is the return type that all run commands should respect
-type RunReturn = error
-
-// ConfigDir prefers $HOME/.config, regardles of XDG stuff (for now)
-func ConfigDir() string {
-	homeDir := os.Getenv("HOME")
-
-	if homeDir == "" {
-		panic("need home to run")
-	}
-
-	return path.Join(homeDir, ".config", "psy")
+func cmake(_ common.RunParams) common.RunReturn {
+	fmt.Println("cmake code generation goes here")
+	return nil
 }
