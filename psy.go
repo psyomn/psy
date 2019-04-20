@@ -23,6 +23,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/psyomn/psy/barf"
 	"github.com/psyomn/psy/common"
 	"github.com/psyomn/psy/memo"
 	"github.com/psyomn/psy/uploader"
@@ -38,6 +39,7 @@ var commands []command
 
 func init() {
 	commands = []command{
+		{"barf", barf.Run, "run code barfer"},
 		{"memo", memo.Run, "description on files in the system"},
 		{"upld", uploader.Run, "run the uploader tool"},
 		{"help", help, "print help"},
