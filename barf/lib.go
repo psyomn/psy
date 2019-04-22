@@ -25,8 +25,9 @@ import (
 )
 
 var runCommands = map[string]func(common.RunParams) common.RunReturn{
-	"cmake": cmake,
-	"ada":   ada,
+	"cmake":    cmake,
+	"ada":      ada,
+	"lilypond": lilypond,
 }
 
 func printUsage() {
