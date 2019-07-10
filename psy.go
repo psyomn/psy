@@ -26,6 +26,7 @@ import (
 	"github.com/psyomn/psy/barf"
 	"github.com/psyomn/psy/common"
 	"github.com/psyomn/psy/memo"
+	"github.com/psyomn/psy/mock"
 	"github.com/psyomn/psy/uploader"
 )
 
@@ -42,6 +43,7 @@ func init() {
 		{"barf", barf.Run, "run code barfer"},
 		{"memo", memo.Run, "description on files in the system"},
 		{"upld", uploader.Run, "run the uploader tool"},
+		{"mock", mock.Run, "run tcp/udp mocker"},
 		{"help", help, "print help"},
 	}
 }
