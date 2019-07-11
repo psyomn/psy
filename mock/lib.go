@@ -130,7 +130,7 @@ func createUDP(port int, ret interface{}, wg *sync.WaitGroup) {
 		log.Println(n, addr, string(buf[:n]))
 
 		if ret != nil {
-			val := processUDPReturn(ret)
+			val := processReturn(ret)
 
 			_, err := pc.WriteTo(val, addr)
 			if err != nil {
@@ -146,6 +146,7 @@ func createTCP(port int, ret interface{}, wg *sync.WaitGroup) {
 	}
 
 	portStr := fmt.Sprintf(":%d", port)
+
 	l, err := net.Listen("tcp", portStr)
 	if err != nil {
 		log.Println("error:", err)
@@ -153,15 +154,33 @@ func createTCP(port int, ret interface{}, wg *sync.WaitGroup) {
 	}
 	defer l.Close()
 
-	conn, err := l.Accept()
-	if err != nil {
-		log.Println("error:", err)
-		return
+	var buff [1024]byte
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Println("error:", err)
+			return
+		}
+
+		n, err := conn.Read(buff[:])
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		log.Println("read num bytes:", n)
+		if ret != nil {
+			val := processReturn(ret)
+			_, err := conn.Write(val)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		conn.Close()
 	}
-	conn.Close()
 }
 
-func processUDPReturn(value interface{}) []byte {
+func processReturn(value interface{}) []byte {
 	var ret []byte
 	switch v := value.(type) {
 	case string:
