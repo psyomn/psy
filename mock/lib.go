@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"reflect"
 	"sync"
 
 	"github.com/psyomn/psy/common"
@@ -96,10 +97,10 @@ func processEntries(conf *config) error {
 		switch v.Type {
 		case "udp":
 			wg.Add(1)
-			go createUDP(v.Port, &wg)
+			go createUDP(v.Port, v.Return, &wg)
 		case "tcp":
 			wg.Add(1)
-			go createTCP(v.Port, &wg)
+			go createTCP(v.Port, v.Return, &wg)
 		default:
 			return fmt.Errorf("unknown type of service to create: %v", v.Type)
 		}
@@ -110,7 +111,7 @@ func processEntries(conf *config) error {
 	return nil
 }
 
-func createUDP(port int, wg *sync.WaitGroup) {
+func createUDP(port int, ret interface{}, wg *sync.WaitGroup) {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -127,10 +128,19 @@ func createUDP(port int, wg *sync.WaitGroup) {
 		}
 
 		log.Println(n, addr, string(buf[:n]))
+
+		if ret != nil {
+			val := processUDPReturn(ret)
+
+			_, err := pc.WriteTo(val, addr)
+			if err != nil {
+				log.Println(err)
+			}
+		}
 	}
 }
 
-func createTCP(port int, wg *sync.WaitGroup) {
+func createTCP(port int, ret interface{}, wg *sync.WaitGroup) {
 	if wg != nil {
 		wg.Done()
 	}
@@ -149,6 +159,30 @@ func createTCP(port int, wg *sync.WaitGroup) {
 		return
 	}
 	conn.Close()
+}
+
+func processUDPReturn(value interface{}) []byte {
+	var ret []byte
+	switch v := value.(type) {
+	case string:
+		ret = []byte(v)
+	case []interface{}:
+		ret = make([]byte, len(v))
+		for i := range v {
+			if val, ok := v[i].(int); ok {
+				ret[i] = byte(val)
+			} else {
+				log.Fatal("not a byte array")
+			}
+		}
+	case []byte:
+		ret = v
+	case []int:
+		log.Fatal("array in return should be byte magnitude")
+	default:
+		log.Fatal("that type is not supported:", reflect.TypeOf(v).String())
+	}
+	return ret
 }
 
 func readFile(path string) ([]byte, error) {
