@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"reflect"
 	"sync"
@@ -43,12 +44,21 @@ udp-service-bytes:
   type: udp
   port: 9995
   return: 12,13,14
+
+http-service:
+  type: http
+  port: 9994
+  return: "<body> hello </body>"
+  root: "/"
 `
 
 type record struct {
 	Type   string      `yaml:"type"`
 	Port   int         `yaml:"port"`
 	Return interface{} `yaml:"return"`
+
+	// only relevant for http endpoints
+	Root string `yaml:"root"`
 }
 
 type config map[string]record
@@ -101,6 +111,10 @@ func processEntries(conf *config) error {
 		case "tcp":
 			wg.Add(1)
 			go createTCP(v.Port, v.Return, &wg)
+
+		case "http":
+			wg.Add(1)
+			go createHTTP(v.Port, v.Return, v.Root, &wg)
 		default:
 			return fmt.Errorf("unknown type of service to create: %v", v.Type)
 		}
@@ -142,7 +156,7 @@ func createUDP(port int, ret interface{}, wg *sync.WaitGroup) {
 
 func createTCP(port int, ret interface{}, wg *sync.WaitGroup) {
 	if wg != nil {
-		wg.Done()
+		defer wg.Done()
 	}
 
 	portStr := fmt.Sprintf(":%d", port)
@@ -178,6 +192,22 @@ func createTCP(port int, ret interface{}, wg *sync.WaitGroup) {
 		}
 		conn.Close()
 	}
+}
+
+func createHTTP(port int, ret interface{}, root string, wg *sync.WaitGroup) {
+	val := processReturn(ret)
+	server := http.NewServeMux()
+	server.HandleFunc(root, func(w http.ResponseWriter, req *http.Request) {
+		w.Write(val)
+	})
+
+	go func(wait *sync.WaitGroup) {
+		if wait != nil {
+			defer wg.Done()
+		}
+
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), server))
+	}(wg)
 }
 
 func processReturn(value interface{}) []byte {
