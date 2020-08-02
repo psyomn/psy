@@ -53,11 +53,9 @@ limitations under the License.
 package gh
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 
 	"github.com/psyomn/psy/common"
@@ -68,8 +66,7 @@ import (
 func Run(args common.RunParams) common.RunReturn {
 	if len(args) != 4 {
 		fmt.Println("usage: ")
-		// nice to have
-		// fmt.Println("  list-labels <owner> <repo>")
+		fmt.Println("  list-labels <owner> <repo>")
 		fmt.Println("  test-labels <config.yaml> <owner> <repo>")
 		fmt.Println("  poison-labels <config.yaml> <owner> <repo>")
 		return errors.New("wrong usage")
@@ -87,22 +84,17 @@ func Run(args common.RunParams) common.RunReturn {
 
 	owner := args[2]
 	repoName := args[3]
-	labels, err := getLabels(owner, repoName)
-	if err != nil {
-		return err
-	}
 
 	repo := repo{
 		owner:   owner,
 		repo:    repoName,
-		labels:  labels,
 		token:   ghToken,
 		actions: config,
 	}
 
-	repo.poison(false)
+	repo.dryRun(true).poison()
 
-	fmt.Println(repo)
+	fmt.Println(repo.String())
 
 	return nil
 }
@@ -130,27 +122,4 @@ func parseLabelConfig(path string) (*labelActions, error) {
 	err = yaml.Unmarshal(contents, &actions)
 
 	return &actions, err
-}
-
-func getLabels(owner, repo string) ([]label, error) {
-	const url = "https://api.github.com/"
-
-	resp, err := http.Get(url + "repos/" + owner + "/" + repo + "/labels")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var labels []label
-	err = json.Unmarshal(bytes, &labels)
-	if err != nil {
-		return nil, err
-	}
-
-	return labels, nil
 }
