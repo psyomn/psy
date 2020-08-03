@@ -1,6 +1,7 @@
 package gh
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -8,15 +9,19 @@ import (
 	"strings"
 )
 
-// Sample github response
-// [{
-//      node_id: "MDU6TGFiZWw2ODUwOTU0Ng==",
-//      url: "https://api.github.com/repos/psyomn/notes/labels/bug",
-//      name: "bug",
-//      color: "fc2929",
-//      default: true,
-// 	description: null
-// }]
+const githubBaseURL = "https://api.github.com/"
+
+type githubLabelPatchBody struct {
+	NewName     string `json:"new_name"`
+	Color       string `json:"color"`
+	Description string `json:"description"`
+}
+
+type githubCreateLabelBody struct {
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	Description string `json:"description"`
+}
 
 type label struct {
 	NodeID      string `json:"node_id"`
@@ -36,7 +41,7 @@ func (s *label) String() string {
 }
 
 type labelActions struct {
-	Rename map[string]interface{}
+	Rename map[string][]string
 	Create [][]string
 }
 
@@ -51,12 +56,66 @@ type repo struct {
 }
 
 func (s *repo) create() {
+	client := http.Client{}
+
+	for _, arr := range s.actions.Create {
+		createBodyStruct := githubCreateLabelBody{
+			Name:        arr[0],
+			Color:       arr[1],
+			Description: arr[2],
+		}
+
+		fmt.Print("create ", createBodyStruct.Name, "... ")
+
+		createLabelURL := fmt.Sprintf(
+			"%srepos/%s/%s/labels",
+			githubBaseURL, s.owner, s.repo,
+		)
+
+		bodyBytes, err := json.Marshal(&createBodyStruct)
+		if err != nil {
+			// TODO better error handling here
+			fmt.Println(err)
+			continue
+		}
+
+		req, err := http.NewRequest("POST", createLabelURL, bytes.NewReader(bodyBytes))
+		if err != nil {
+			// TODO better error handling here
+			fmt.Println(err)
+			continue
+		}
+
+		req.Header["Accept"] = []string{"application/vnd.github.v3+json"}
+		req.Header["Authorization"] = []string{fmt.Sprintf("token %s", s.token)}
+
+		if s.isDryRun {
+			fmt.Println("[SKIP]")
+			continue
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("[ERROR]: ", err)
+			continue
+		}
+
+		if resp.StatusCode == http.StatusCreated {
+			fmt.Println("[DONE]")
+			continue
+		}
+
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			fmt.Println("[EXISTS] (got a 422 http code, so the label probably already exists)")
+			continue
+		}
+
+		fmt.Println("[ERROR]: ", resp)
+	}
 }
 
 func (s *repo) getLabels() error {
-	const url = "https://api.github.com/"
-
-	resp, err := http.Get(url + "repos/" + s.owner + "/" + s.repo + "/labels")
+	resp, err := http.Get(githubBaseURL + "repos/" + s.owner + "/" + s.repo + "/labels")
 	if err != nil {
 		return err
 	}
@@ -81,18 +140,82 @@ func (s *repo) dryRun(run bool) *repo {
 }
 
 func (s *repo) poison() error {
+	s.rename()
+	s.create()
+
 	err := s.getLabels()
 	if err != nil {
 		return err
 	}
 
-	s.rename()
-	s.create()
-
 	return nil
 }
 
 func (s *repo) rename() {
+	// https://docs.github.com/en/rest/reference/issues#update-a-label
+
+	client := http.Client{}
+
+	for k, v := range s.actions.Rename {
+		patchStruct := githubLabelPatchBody{
+			NewName:     v[0],
+			Color:       v[1],
+			Description: v[2],
+		}
+
+		patchURL := fmt.Sprintf("%srepos/%s/%s/labels/%s",
+			githubBaseURL,
+			s.owner,
+			s.repo,
+			k)
+
+		bodyBytes, err := json.Marshal(&patchStruct)
+		if err != nil {
+			// TODO better error handling here
+			fmt.Println(err)
+			continue
+		}
+
+		fmt.Print("update ", k, " -> ", patchStruct.NewName, "... ")
+		if s.isDryRun {
+			fmt.Println(" [SKIP]")
+			continue
+		}
+
+		req, err := http.NewRequest(
+			"PATCH",
+			patchURL,
+
+			bytes.NewReader(bodyBytes),
+		)
+
+		if err != nil {
+			// TODO better error handling here
+			fmt.Println(err)
+			continue
+		}
+
+		req.Header["Accept"] = []string{"application/vnd.github.v3+json"}
+		req.Header["Authorization"] = []string{fmt.Sprintf("token %s", s.token)}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("[ERROR]: ", err, resp)
+			continue
+		}
+
+		if resp.StatusCode == http.StatusNotFound {
+			fmt.Println("[NOT FOUND] (can't update a label if it doesn't exist)")
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Println("[ERROR]:", resp)
+			continue
+		}
+
+		fmt.Println("[OK]")
+	}
 }
 
 func (s *repo) String() string {
