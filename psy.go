@@ -37,10 +37,8 @@ type command struct {
 	desc string
 }
 
-var commands []command
-
-func init() {
-	commands = []command{
+func makeCommands() []command {
+	return []command{
 		{"barf", barf.Run, "run code barfer"},
 		{"memo", memo.Run, "description on files in the system"},
 		{"upld", uploader.Run, "run the uploader tool"},
@@ -52,21 +50,16 @@ func init() {
 
 func help(_ common.RunParams) common.RunReturn {
 	fmt.Println("usage:")
+	commands := makeCommands()
 	for _, c := range commands {
 		fmt.Println("\t", c.name, "\t", c.desc)
 	}
 	return nil
 }
 
-func handleRet(ret common.RunReturn) {
-	if ret != nil {
-		log.Println("error: ", ret)
-		os.Exit(1)
-	}
-}
-
 func main() {
 	args := os.Args
+	commands := makeCommands()
 
 	if len(args) < 2 {
 		help(nil)

@@ -54,6 +54,7 @@ package gh
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -63,57 +64,62 @@ import (
 	"github.com/go-yaml/yaml"
 )
 
-func usage() error {
-	fmt.Println("usage: ")
-	fmt.Println("  help - print this")
-	fmt.Println("  generate-config - print configuration to stdout")
-	fmt.Println("  list-labels <owner> <repo> - list labels on a github repository")
-	fmt.Println("  dryrun-poison <config.yml> <owner> <repo> - dryrun changes to labels")
-	fmt.Println("  poison-labels <config.yml> <owner> <repo> - run actual changes to labels")
+func usage(fs *flag.FlagSet) error {
+	fs.Usage()
 	return errors.New("wrong usage")
+}
+
+type session struct {
+	help           bool
+	generateConfig bool
+	listLabels     bool
+	dryRun         bool
+	poison         bool
 }
 
 // Run will run the subcommand with provided parameters
 func Run(args common.RunParams) common.RunReturn {
-	ghToken, err := getGithubToken()
+	sess := session{}
+	ghCmd := flag.NewFlagSet("gh", flag.ExitOnError)
+	ghCmd.BoolVar(&sess.help, "help", false, "print help info")
+	ghCmd.BoolVar(&sess.generateConfig, "generate-config", false, "print generic config into stdout")
+	ghCmd.BoolVar(&sess.listLabels, "list-labels", false, "<owner> <repo> - list the labels on a github repository")
+	ghCmd.BoolVar(&sess.dryRun, "dryrun", false, "set to dryrun poison")
+	ghCmd.BoolVar(&sess.poison, "poison", false, "<config.yml> <owner> <repo> - run actual changes to labels")
 
+	ghCmd.Parse(args[:])
+
+	ghToken, err := getGithubToken()
 	if err != nil {
 		return err
 	}
 
-	if len(args) == 1 {
-		if args[0] == "generate-config" {
-			return generateConfig()
-		} else if args[0] == "help" {
-			usage()
-			return nil
-		} else {
-			return usage()
+	ghArgs := ghCmd.Args()
+	switch {
+	case sess.generateConfig:
+		return generateConfig()
+	case sess.listLabels:
+		if len(ghCmd.Args()) < 2 {
+			return usage(ghCmd)
 		}
-	} else if len(args) == 3 {
-		if args[0] != "list-labels" {
-			return usage()
+		owner := ghArgs[0]
+		repo := ghArgs[1]
+		return listLabels(owner, repo, ghToken)
+	case sess.poison:
+		if len(ghCmd.Args()) < 3 {
+			return usage(ghCmd)
 		}
-		owner := args[1]
-		repoName := args[2]
-		return listLabels(owner, repoName, ghToken)
-	} else if len(args) == 4 {
-		dryRun := false
-		if args[0] == "dryrun-poison" {
-			dryRun = true
-		} else if args[0] == "poison-labels" {
-		} else {
-			return usage()
-		}
-
-		config := args[1]
-		owner := args[2]
-		repoName := args[3]
-
-		return poison(dryRun, config, owner, repoName, ghToken)
+		config := ghArgs[0]
+		owner := ghArgs[1]
+		repoName := ghArgs[2]
+		return poison(sess.dryRun, config, owner, repoName, ghToken)
+	case sess.help:
+		usage(ghCmd)
+		return nil
+	default:
 	}
 
-	return usage()
+	return usage(ghCmd)
 }
 
 func getGithubToken() (string, error) {
