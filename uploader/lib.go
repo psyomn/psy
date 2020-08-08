@@ -46,7 +46,7 @@ const (
 
 // Run will run the command with default configs. For now, the
 // uploader does not accept any configuration.
-func Run(args common.RunParams) common.RunReturn {
+func Run(_ common.RunParams) common.RunReturn {
 	createDirs()
 
 	fmt.Println("listening at port:", port)

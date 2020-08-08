@@ -30,6 +30,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -41,7 +42,6 @@ import (
 	"github.com/psyomn/psy/common"
 )
 
-func usage()                   { fmt.Println("usage: \nmemo <filename>") }
 func memoDirPath() string      { return path.Join(common.ConfigDir(), "memo") }
 func memoDataFilePath() string { return path.Join(memoDirPath(), "data.gobbin") }
 
@@ -134,10 +134,28 @@ func store(memos *memoStore) {
 	}
 }
 
+func usage(fs *flag.FlagSet) error {
+	fs.Usage()
+	return errors.New("wrong usage")
+}
+
 // Run the memo command
 // TODO: this needs some cleaning up and a better argument parsing strategy
 func Run(args common.RunParams) common.RunReturn {
-	if len(args) < 1 {
+	type memoFlags struct {
+		fileName string
+		memo     string
+		list     bool
+	}
+
+	sess := memoFlags{}
+
+	memoCmd := flag.NewFlagSet("memo", flag.ExitOnError)
+	memoCmd.StringVar(&sess.fileName, "file", sess.fileName, "<message> - the filename to write a memo about")
+	memoCmd.BoolVar(&sess.list, "list", sess.list, "list all current memos")
+	memoCmd.Parse(args)
+
+	if sess.list {
 		theStore := decode(memoDataFilePath())
 		for k, v := range theStore.Data {
 			fmt.Printf("%v\t%v\n", k, v)
@@ -145,20 +163,22 @@ func Run(args common.RunParams) common.RunReturn {
 		return nil
 	}
 
-	name := args[0]
-
-	if _, err := os.Stat(name); os.IsNotExist(err) {
+	if _, err := os.Stat(sess.fileName); os.IsNotExist(err) {
 		return errors.New("fool! you can't memo what does not exist")
 	}
 
-	absPath, err := filepath.Abs(name)
+	if sess.fileName == "" {
+		return nil
+	}
+
+	absPath, err := filepath.Abs(sess.fileName)
 	if err != nil {
 		log.Println("problem getting abs path:", err)
 		return nil
 	}
 
-	if len(args[1:]) > 0 {
-		message := strings.Join(args[1:], " ")
+	if len(memoCmd.Args()) > 0 {
+		message := strings.Join(memoCmd.Args(), " ")
 		theStore := decode(memoDataFilePath())
 		theStore.Add(absPath, message)
 		store(theStore)
@@ -169,7 +189,7 @@ func Run(args common.RunParams) common.RunReturn {
 	store := decode(memoDataFilePath())
 	value, ok := store.Get(absPath)
 	if !ok {
-		log.Println("could not find entry for:", name)
+		log.Println("could not find entry for:", sess.fileName)
 		return nil
 	}
 	fmt.Println(value)
