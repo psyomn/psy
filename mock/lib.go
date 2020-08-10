@@ -5,6 +5,7 @@ package mock
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -63,31 +64,35 @@ type record struct {
 
 type config map[string]record
 
-func printUsage() {
-	fmt.Println("usage: ")
-	fmt.Println("  mock [--generate] config.yaml")
-	fmt.Println("       --generate will generate a sample config")
+func usage(fs *flag.FlagSet) common.RunReturn {
+	fs.Usage()
+	return errors.New("wrong usage")
 }
 
 // Run net mocker
 func Run(args common.RunParams) common.RunReturn {
 	t := &config{}
 
-	if len(args) == 0 {
-		printUsage()
-		return errors.New("wrong usage of mock")
+	type session struct {
+		generate string
+		config   string
+	}
+	sess := session{}
+
+	mockCmd := flag.NewFlagSet("mock", flag.ExitOnError)
+	mockCmd.StringVar(&sess.generate, "generate", sess.generate, "generate a sample config file")
+	mockCmd.StringVar(&sess.config, "config", sess.config, "use the config to run the server")
+	mockCmd.Parse(args)
+
+	if sess.generate != "" {
+		return generateYamlConfig(sess.generate)
 	}
 
-	if len(args) >= 2 && args[0] == "--generate" {
-		return generateYamlConfig(args[1])
+	if sess.config == "" {
+		return usage(mockCmd)
 	}
 
-	if len(args) != 1 {
-		printUsage()
-		return errors.New("wrong usage of mock")
-	}
-
-	configContents, err := readFile(args[0])
+	configContents, err := readFile(sess.config)
 	if err != nil {
 		return err
 	}
