@@ -1,10 +1,25 @@
 /*
 Package mock will mock tcp/udp endpoints
+
+Copyright 2020 Simon Symeonidis (psyomn)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 package mock
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -63,31 +78,35 @@ type record struct {
 
 type config map[string]record
 
-func printUsage() {
-	fmt.Println("usage: ")
-	fmt.Println("  mock [--generate] config.yaml")
-	fmt.Println("       --generate will generate a sample config")
+func usage(fs *flag.FlagSet) common.RunReturn {
+	fs.Usage()
+	return errors.New("wrong usage")
 }
 
 // Run net mocker
 func Run(args common.RunParams) common.RunReturn {
 	t := &config{}
 
-	if len(args) == 0 {
-		printUsage()
-		return errors.New("wrong usage of mock")
+	type session struct {
+		generate string
+		config   string
+	}
+	sess := session{}
+
+	mockCmd := flag.NewFlagSet("mock", flag.ExitOnError)
+	mockCmd.StringVar(&sess.generate, "generate", sess.generate, "generate a sample config file")
+	mockCmd.StringVar(&sess.config, "config", sess.config, "use the config to run the server")
+	mockCmd.Parse(args)
+
+	if sess.generate != "" {
+		return generateYamlConfig(sess.generate)
 	}
 
-	if len(args) >= 2 && args[0] == "--generate" {
-		return generateYamlConfig(args[1])
+	if sess.config == "" {
+		return usage(mockCmd)
 	}
 
-	if len(args) != 1 {
-		printUsage()
-		return errors.New("wrong usage of mock")
-	}
-
-	configContents, err := readFile(args[0])
+	configContents, err := readFile(sess.config)
 	if err != nil {
 		return err
 	}
