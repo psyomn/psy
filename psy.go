@@ -26,6 +26,7 @@ import (
 	"github.com/psyomn/psy/barf"
 	"github.com/psyomn/psy/common"
 	"github.com/psyomn/psy/gh"
+	"github.com/psyomn/psy/git"
 	"github.com/psyomn/psy/memo"
 	"github.com/psyomn/psy/mock"
 	"github.com/psyomn/psy/uploader"
@@ -43,6 +44,7 @@ func makeCommands() []command {
 		{"memo", memo.Run, "description on files in the system"},
 		{"upld", uploader.Run, "run the uploader tool"},
 		{"mock", mock.Run, "run tcp/udp mocker"},
+		{"git", git.Run, "run git helper"},
 		{"gh", gh.Run, "personal github utils"},
 		{"help", help, "print help"},
 	}
@@ -70,20 +72,16 @@ func main() {
 	rest := args[2:]
 	var callfn func(common.RunParams) common.RunReturn
 
-	{
-		found := false
-		for _, c := range commands {
-			if cmd == c.name {
-				callfn = c.fn
-				found = true
-				break
-			}
+	for _, c := range commands {
+		if cmd == c.name {
+			callfn = c.fn
+			break
 		}
+	}
 
-		if !found {
-			log.Println("no such command: ", cmd)
-			os.Exit(1)
-		}
+	if callfn == nil {
+		log.Println("no such command: ", cmd)
+		os.Exit(1)
 	}
 
 	err := callfn(rest)
