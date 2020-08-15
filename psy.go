@@ -77,20 +77,16 @@ func main() {
 	rest := args[2:]
 	var callfn func(common.RunParams) common.RunReturn
 
-	{
-		found := false
-		for _, c := range commands {
-			if cmd == c.name {
-				callfn = c.fn
-				found = true
-				break
-			}
+	for _, c := range commands {
+		if cmd == c.name {
+			callfn = c.fn
+			break
 		}
+	}
 
-		if !found {
-			log.Println("no such command: ", cmd)
-			os.Exit(1)
-		}
+	if callfn == nil {
+		log.Println("no such command: ", cmd)
+		os.Exit(1)
 	}
 
 	err := callfn(rest)
