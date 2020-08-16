@@ -38,6 +38,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/psyomn/psy/common"
 )
@@ -45,13 +46,17 @@ import (
 func memoDirPath() string      { return path.Join(common.ConfigDir(), "memo") }
 func memoDataFilePath() string { return path.Join(memoDirPath(), "data.gobbin") }
 
+type memoRecord struct {
+	Id   uint64
+	Data string
+}
 type memoStore struct {
-	Data map[string]string
+	Data map[string]*memoRecord
 }
 
 func memoStoreNew() *memoStore {
 	var store memoStore
-	store.Data = make(map[string]string)
+	store.Data = make(map[string]*memoRecord)
 	return &store
 }
 
@@ -79,16 +84,32 @@ func (s *memoStore) encode() (bytes.Buffer, error) {
 }
 
 func (s *memoStore) Add(key, value string) {
-	s.Data[key] = value
+	maxID := s.maxID() + 1
+	s.Data[key] = &memoRecord{Id: maxID, Data: value}
 }
 
-func (s *memoStore) Get(key string) (string, bool) {
+func (s *memoStore) Get(key string) (*memoRecord, bool) {
 	val, ok := s.Data[key]
 	return val, ok
 }
 
+func (s *memoStore) maxID() uint64 {
+	var maxID uint64
+	for _, v := range s.Data {
+		if maxID < v.Id {
+			maxID = v.Id
+		}
+	}
+
+	return maxID
+}
+
 func decode(cmdInFile string) *memoStore {
 	var buff bytes.Buffer
+
+	if !common.FileExists(cmdInFile) {
+		return memoStoreNew()
+	}
 
 	dat, err := ioutil.ReadFile(cmdInFile)
 	if err != nil {
@@ -157,9 +178,16 @@ func Run(args common.RunParams) common.RunReturn {
 
 	if sess.list {
 		theStore := decode(memoDataFilePath())
+
+		writer := new(tabwriter.Writer)
+		writer.Init(os.Stdout, 0, 8, 0, '\t', 0)
+
 		for k, v := range theStore.Data {
-			fmt.Printf("%v\t%v\n", k, v)
+			fmt.Fprintf(writer, "%v\t%v\t%v\n", v.Id, k, v.Data)
 		}
+
+		writer.Flush()
+
 		return nil
 	}
 
@@ -192,6 +220,7 @@ func Run(args common.RunParams) common.RunReturn {
 		log.Println("could not find entry for:", sess.fileName)
 		return nil
 	}
+
 	fmt.Println(value)
 
 	return nil

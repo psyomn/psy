@@ -39,3 +39,10 @@ func ConfigDir() string {
 
 	return path.Join(homeDir, ".config", "psy")
 }
+
+// FileExists checks if a file exists
+func FileExists(filename string) bool {
+	fd, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+	defer fd.Close()
+	return err != nil
+}
