@@ -1,3 +1,7 @@
+# Archived
+
+I've moved everything to ecophagy: https://github.com/psyomn/ecophagy/tree/master/psy
+
 # Tools
 
 These are some common tools that I always think about having but never
